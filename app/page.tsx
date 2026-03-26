@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 // 2026年最先进的设计系统
 const designSystem = {
@@ -190,6 +191,16 @@ export default function Home() {
     setFeedback("");
     setExplanation("");
 
+    // Plausible 事件追踪：知识点输入
+    if (typeof window !== 'undefined' && (window as any).plausible) {
+      (window as any).plausible('knowledge_input', {
+        props: {
+          input_length: input.length,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
     try {
       // 模拟网络延迟
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -228,14 +239,60 @@ export default function Home() {
     setLoading(false);
   };
 
-  const handleAnswer = (selectedOption: string) => {
+  const handleAnswer = async (selectedOption: string) => {
+    console.log('=== handleAnswer 函数被调用 ===');
+    console.log('选择的选项:', selectedOption);
+    
     setUserAnswer(selectedOption);
     // 提取选项的第一个字符（A/B/C/D）进行比较
     const answerKey = selectedOption.charAt(0);
-    if (answerKey === correctAnswer) {
+    const isCorrect = answerKey === correctAnswer;
+    
+    if (isCorrect) {
       setFeedback("正确！");
     } else {
       setFeedback("错误！");
+    }
+
+    console.log('准备记录到数据库...');
+    console.log('用户输入:', input);
+    console.log('题目:', question);
+    console.log('用户答案:', selectedOption);
+    console.log('正确答案:', correctAnswer);
+    console.log('是否正确:', isCorrect);
+
+    // Plausible 事件追踪：答题提交
+    if (typeof window !== 'undefined' && (window as any).plausible) {
+      (window as any).plausible('answer_submit', {
+        props: {
+          is_correct: isCorrect,
+          question_length: question.length,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
+    // 记录到数据库
+    try {
+      console.log('开始调用 Supabase API...');
+      const { error } = await supabase
+        .from('learning_records')
+        .insert({
+          user_input: input,
+          question: question,
+          user_answer: selectedOption,
+          correct_answer: correctAnswer,
+          is_correct: isCorrect,
+          created_at: new Date().toISOString()
+        });
+      
+      if (error) {
+        console.error('数据库记录失败:', error);
+      } else {
+        console.log('✅ 数据库记录成功！');
+      }
+    } catch (error) {
+      console.error('数据库操作错误:', error);
     }
   };
 
@@ -245,6 +302,16 @@ export default function Home() {
     // 清空答题状态
     setUserAnswer("");
     setFeedback("");
+
+    // Plausible 事件追踪：错题强化
+    if (typeof window !== 'undefined' && (window as any).plausible) {
+      (window as any).plausible('retry_question', {
+        props: {
+          original_question: question,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
 
     try {
       // 模拟网络延迟
@@ -552,7 +619,11 @@ export default function Home() {
                 {options.map((option, index) => (
                   <button
                     key={index}
-                    onClick={() => handleAnswer(option)}
+                    onClick={() => {
+                      console.log('=== 按钮被点击了 ===');
+                      console.log('选项:', option);
+                      handleAnswer(option);
+                    }}
                     disabled={feedback !== ""}
                     style={{
                       padding: designSystem.spacing.lg,
@@ -701,7 +772,59 @@ export default function Home() {
         }}>
           <p>© 2026 Learning Loop AI | 智能学习闭环系统</p>
           <p style={{ marginTop: designSystem.spacing.xs }}>使用先进AI技术，打造沉浸式学习体验</p>
+          <a
+            href="/feedback"
+            style={{
+              display: "inline-block",
+              marginTop: designSystem.spacing.md,
+              color: designSystem.colors.primary,
+              textDecoration: "none",
+              fontWeight: "500",
+              transition: `color ${designSystem.animations.transition}`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = designSystem.colors.primaryLight;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = designSystem.colors.primary;
+            }}
+          >
+            📝 用户反馈
+          </a>
         </footer>
+
+        {/* 浮动反馈按钮 */}
+        <a
+          href="/feedback"
+          style={{
+            position: "fixed",
+            bottom: designSystem.spacing.xl,
+            right: designSystem.spacing.xl,
+            backgroundColor: designSystem.colors.primary,
+            color: designSystem.colors.text,
+            padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+            borderRadius: designSystem.borderRadius.full,
+            boxShadow: designSystem.shadows.xl,
+            textDecoration: "none",
+            fontWeight: "600",
+            fontSize: designSystem.typography.body.regular,
+            transition: `all ${designSystem.animations.transition}`,
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            gap: designSystem.spacing.sm,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = designSystem.colors.primaryLight;
+            e.currentTarget.style.transform = "translateY(-2px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = designSystem.colors.primary;
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          💬 反馈
+        </a>
       </div>
     </div>
   );
