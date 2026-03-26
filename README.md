@@ -15,7 +15,10 @@
 - **前端框架**: Next.js 16.2.1 (React 19.2.4)
 - **样式方案**: 原生CSS + 设计系统
 - **后端**: Next.js API Routes
+- **数据库**: Supabase (PostgreSQL)
 - **部署平台**: Vercel
+- **数据分析**: Plausible
+- **用户反馈**: Tally
 - **开发工具**: TypeScript, ESLint
 
 ## 📱 核心功能
@@ -34,6 +37,16 @@
 - 错误时展示错因分析
 - 提供正确思路指导
 - "再来一道"功能，生成相似新题
+
+### 4. 数据记录与分析
+- 自动记录学习数据到 Supabase
+- 用户输入、答题、正确率等
+- 支持数据导出和分析
+
+### 5. 用户反馈系统
+- Tally 反馈表单集成
+- 收集用户意见和建议
+- 支持多维度用户画像分析
 
 ## 🎨 设计特色
 
@@ -96,9 +109,13 @@ learning-loop-ai/
 │   ├── api/
 │   │   └── ask/
 │   │       └── route.ts      # API路由，提供假数据
+│   ├── feedback/
+│   │   └── page.tsx         # 用户反馈页面
 │   ├── page.tsx              # 主页面
 │   ├── layout.tsx           # 布局组件
 │   └── globals.css          # 全局样式
+├── lib/
+│   └── supabase.ts          # Supabase 客户端配置
 ├── public/                  # 静态资源
 ├── PRD.md                   # 产品需求文档
 ├── README.md                # 项目说明
@@ -106,6 +123,35 @@ learning-loop-ai/
 ```
 
 ## 🔧 配置说明
+
+### 环境变量配置
+
+项目需要以下环境变量：
+
+```bash
+# OpenAI API Key (可选，如需接入真实AI服务)
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Supabase 配置 (必需)
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# Plausible 数据统计 (可选)
+NEXT_PUBLIC_PLAUSIBLE_DOMAIN=your-domain.com
+```
+
+### 本地开发配置
+
+1. 创建 `.env.local` 文件
+2. 复制上述环境变量到文件中
+3. 替换为您的实际值
+
+### Vercel 部署配置
+
+在 Vercel Dashboard 中添加环境变量：
+1. 进入项目 Settings → Environment Variables
+2. 添加上述环境变量
+3. 选择 Production, Preview, Development 环境
 
 项目使用假数据进行演示，无需配置API密钥。如需接入真实AI服务，请修改 `app/api/ask/route.ts` 文件。
 

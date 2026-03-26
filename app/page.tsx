@@ -155,6 +155,8 @@ const LoadingAnimation = () => {
 
 export default function Home() {
   const [input, setInput] = useState("");  // 存储用户输入
+  const [exam, setExam] = useState("CFA");  // 存储选择的考试（CFA、CPA、FRM）
+  const [level, setLevel] = useState("Level 1");  // 存储选择的级别（Level 1、Level 2、Level 3）
   const [knowledge, setKnowledge] = useState("");  // 存储知识点讲解
   const [loading, setLoading] = useState(false);  // 加载状态
   const [question, setQuestion] = useState("");  // 存储问题
@@ -195,6 +197,8 @@ export default function Home() {
     if (typeof window !== 'undefined' && (window as any).plausible) {
       (window as any).plausible('knowledge_input', {
         props: {
+          exam: exam,
+          level: level,
           input_length: input.length,
           timestamp: new Date().toISOString()
         }
@@ -208,7 +212,7 @@ export default function Home() {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input }),
+        body: JSON.stringify({ input, exam, level }),
       });
 
       const data = await res.json();
@@ -405,6 +409,80 @@ export default function Home() {
             智能学习闭环系统 | 从理解到掌握的完美体验
           </p>
         </header>
+
+        {/* 考试选择区域 */}
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "center", 
+          marginBottom: designSystem.spacing.lg,
+          gap: designSystem.spacing.md,
+          flexWrap: "wrap",
+        }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: designSystem.spacing.sm,
+          }}>
+            <span style={{
+              color: designSystem.colors.textSecondary,
+              fontSize: designSystem.typography.body.regular,
+            }}>
+              考试：
+            </span>
+            <select
+              value={exam}
+              onChange={(e) => setExam(e.target.value)}
+              style={{
+                padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+                fontSize: designSystem.typography.body.regular,
+                borderRadius: designSystem.borderRadius.md,
+                border: `1px solid ${designSystem.colors.border}`,
+                backgroundColor: designSystem.colors.surface,
+                color: designSystem.colors.text,
+                transition: designSystem.animations.transition,
+                fontFamily: designSystem.typography.fontFamily,
+                boxShadow: designSystem.shadows.sm,
+                cursor: "pointer",
+              }}
+            >
+              <option value="CFA">CFA</option>
+              <option value="CPA">CPA</option>
+              <option value="FRM">FRM</option>
+            </select>
+          </div>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: designSystem.spacing.sm,
+          }}>
+            <span style={{
+              color: designSystem.colors.textSecondary,
+              fontSize: designSystem.typography.body.regular,
+            }}>
+              级别：
+            </span>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              style={{
+                padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+                fontSize: designSystem.typography.body.regular,
+                borderRadius: designSystem.borderRadius.md,
+                border: `1px solid ${designSystem.colors.border}`,
+                backgroundColor: designSystem.colors.surface,
+                color: designSystem.colors.text,
+                transition: designSystem.animations.transition,
+                fontFamily: designSystem.typography.fontFamily,
+                boxShadow: designSystem.shadows.sm,
+                cursor: "pointer",
+              }}
+            >
+              <option value="Level 1">Level 1</option>
+              <option value="Level 2">Level 2</option>
+              <option value="Level 3">Level 3</option>
+            </select>
+          </div>
+        </div>
 
         {/* 输入区域 */}
         <div style={{ 
