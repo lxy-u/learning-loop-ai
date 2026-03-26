@@ -108,8 +108,8 @@ export default function FeedbackPage() {
             width="100%"
             height="1000"
             frameBorder="0"
-            marginHeight="0"
-            marginWidth="0"
+            marginHeight={0}
+            marginWidth={0}
             title="Learning Loop AI 用户反馈"
             style={{
               display: "block",
