@@ -157,6 +157,30 @@ export default function Home() {
   const [input, setInput] = useState("");  // 存储用户输入
   const [exam, setExam] = useState("CFA");  // 存储选择的考试（CFA、CPA、FRM）
   const [level, setLevel] = useState("Level 1");  // 存储选择的级别（Level 1、Level 2、Level 3）
+  const [difficulty, setDifficulty] = useState("简单");  // 存储选择的难度（简单、中等、困难）
+  const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);  // 连续答对次数
+  const [consecutiveWrong, setConsecutiveWrong] = useState(0);  // 连续答错次数
+  const [learningProgress, setLearningProgress] = useState({
+    totalQuestions: 0,
+    correctAnswers: 0,
+    wrongAnswers: 0,
+    learnedTopics: [] as string[],
+    studyTime: 0,  // 学习时长（分钟）
+    currentStreak: 0,  // 当前连续答对次数
+    bestStreak: 0  // 最佳连续答对次数
+  });  // 学习进度数据
+  const [wrongQuestions, setWrongQuestions] = useState<{
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    userAnswer: string;
+    explanation: string;
+    topic: string;
+    exam: string;
+    level: string;
+    difficulty: string;
+    timestamp: string;
+  }[]>([]);  // 错题本数据
   const [knowledge, setKnowledge] = useState("");  // 存储知识点讲解
   const [loading, setLoading] = useState(false);  // 加载状态
   const [question, setQuestion] = useState("");  // 存储问题
@@ -179,6 +203,40 @@ export default function Home() {
       setTimeout(() => setShowQuestion(true), 300);
     }
   }, [question]);
+
+  // 从localStorage加载学习进度
+  useEffect(() => {
+    const savedProgress = localStorage.getItem('learningProgress');
+    if (savedProgress) {
+      try {
+        setLearningProgress(JSON.parse(savedProgress));
+      } catch (error) {
+        console.error('加载学习进度失败:', error);
+      }
+    }
+  }, []);
+
+  // 保存学习进度到localStorage
+  useEffect(() => {
+    localStorage.setItem('learningProgress', JSON.stringify(learningProgress));
+  }, [learningProgress]);
+
+  // 从localStorage加载错题本
+  useEffect(() => {
+    const savedWrongQuestions = localStorage.getItem('wrongQuestions');
+    if (savedWrongQuestions) {
+      try {
+        setWrongQuestions(JSON.parse(savedWrongQuestions));
+      } catch (error) {
+        console.error('加载错题本失败:', error);
+      }
+    }
+  }, []);
+
+  // 保存错题本到localStorage
+  useEffect(() => {
+    localStorage.setItem('wrongQuestions', JSON.stringify(wrongQuestions));
+  }, [wrongQuestions]);
 
   const handleAsk = async () => {
     setLoading(true);
@@ -212,7 +270,7 @@ export default function Home() {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input, exam, level }),
+        body: JSON.stringify({ input, exam, level, difficulty }),
       });
 
       const data = await res.json();
@@ -226,6 +284,14 @@ export default function Home() {
 
       // 设置知识点讲解
       setKnowledge(data.knowledge);
+
+      // 更新学习进度：添加学习的知识点
+      if (input && !learningProgress.learnedTopics.includes(input)) {
+        setLearningProgress(prev => ({
+          ...prev,
+          learnedTopics: [...prev.learnedTopics, input]
+        }));
+      }
 
       // 如果有题目，设置题目相关数据
       if (data.question) {
@@ -254,8 +320,68 @@ export default function Home() {
     
     if (isCorrect) {
       setFeedback("正确！");
+      setConsecutiveCorrect(prev => prev + 1);
+      setConsecutiveWrong(0);
+      
+      // 更新学习进度
+      setLearningProgress(prev => ({
+        ...prev,
+        totalQuestions: prev.totalQuestions + 1,
+        correctAnswers: prev.correctAnswers + 1,
+        currentStreak: prev.currentStreak + 1,
+        bestStreak: Math.max(prev.bestStreak, prev.currentStreak + 1)
+      }));
+      
+      // 动态难度调整：连续答对3题，提升难度
+      if (consecutiveCorrect >= 2) {
+        if (difficulty === "简单") {
+          setDifficulty("中等");
+          setConsecutiveCorrect(0);
+        } else if (difficulty === "中等") {
+          setDifficulty("困难");
+          setConsecutiveCorrect(0);
+        }
+      }
     } else {
       setFeedback("错误！");
+      setConsecutiveWrong(prev => prev + 1);
+      setConsecutiveCorrect(0);
+      
+      // 更新学习进度
+      setLearningProgress(prev => ({
+        ...prev,
+        totalQuestions: prev.totalQuestions + 1,
+        wrongAnswers: prev.wrongAnswers + 1,
+        currentStreak: 0
+      }));
+      
+      // 添加到错题本
+      setWrongQuestions(prev => [
+        ...prev,
+        {
+          question,
+          options,
+          correctAnswer,
+          userAnswer: selectedOption,
+          explanation,
+          topic: input,
+          exam,
+          level,
+          difficulty,
+          timestamp: new Date().toISOString()
+        }
+      ]);
+      
+      // 动态难度调整：连续答错2题，降低难度
+      if (consecutiveWrong >= 1) {
+        if (difficulty === "困难") {
+          setDifficulty("中等");
+          setConsecutiveWrong(0);
+        } else if (difficulty === "中等") {
+          setDifficulty("简单");
+          setConsecutiveWrong(0);
+        }
+      }
     }
 
     console.log('准备记录到数据库...');
@@ -482,7 +608,155 @@ export default function Home() {
               <option value="Level 3">Level 3</option>
             </select>
           </div>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: designSystem.spacing.sm,
+          }}>
+            <span style={{
+              color: designSystem.colors.textSecondary,
+              fontSize: designSystem.typography.body.regular,
+            }}>
+              难度：
+            </span>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              style={{
+                padding: `${designSystem.spacing.sm} ${designSystem.spacing.md}`,
+                fontSize: designSystem.typography.body.regular,
+                borderRadius: designSystem.borderRadius.md,
+                border: `1px solid ${designSystem.colors.border}`,
+                backgroundColor: designSystem.colors.surface,
+                color: designSystem.colors.text,
+                transition: designSystem.animations.transition,
+                fontFamily: designSystem.typography.fontFamily,
+                boxShadow: designSystem.shadows.sm,
+                cursor: "pointer",
+              }}
+            >
+              <option value="简单">简单</option>
+              <option value="中等">中等</option>
+              <option value="困难">困难</option>
+            </select>
+          </div>
         </div>
+
+        {/* 学习进度显示区域 */}
+        {learningProgress.totalQuestions > 0 && (
+          <div style={{
+            backgroundColor: designSystem.colors.surface,
+            borderRadius: designSystem.borderRadius.lg,
+            padding: designSystem.spacing.lg,
+            marginBottom: designSystem.spacing.xl,
+            border: `1px solid ${designSystem.colors.border}`,
+            boxShadow: designSystem.shadows.md,
+          }}>
+            <h3 style={{
+              fontSize: designSystem.typography.heading.h4,
+              fontWeight: 600,
+              marginBottom: designSystem.spacing.md,
+              color: designSystem.colors.text,
+              display: "flex",
+              alignItems: "center",
+              gap: designSystem.spacing.sm,
+            }}>
+              📊 学习进度
+            </h3>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: designSystem.spacing.md,
+            }}>
+              <div style={{
+                backgroundColor: designSystem.colors.surfaceLight,
+                borderRadius: designSystem.borderRadius.md,
+                padding: designSystem.spacing.md,
+                textAlign: "center",
+              }}>
+                <div style={{
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  color: designSystem.colors.primary,
+                  marginBottom: designSystem.spacing.xs,
+                }}>
+                  {learningProgress.totalQuestions}
+                </div>
+                <div style={{
+                  fontSize: designSystem.typography.body.small,
+                  color: designSystem.colors.textSecondary,
+                }}>
+                  总答题数
+                </div>
+              </div>
+              <div style={{
+                backgroundColor: designSystem.colors.surfaceLight,
+                borderRadius: designSystem.borderRadius.md,
+                padding: designSystem.spacing.md,
+                textAlign: "center",
+              }}>
+                <div style={{
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  color: designSystem.colors.success,
+                  marginBottom: designSystem.spacing.xs,
+                }}>
+                  {learningProgress.totalQuestions > 0 
+                    ? Math.round((learningProgress.correctAnswers / learningProgress.totalQuestions) * 100) 
+                    : 0}%
+                </div>
+                <div style={{
+                  fontSize: designSystem.typography.body.small,
+                  color: designSystem.colors.textSecondary,
+                }}>
+                  正确率
+                </div>
+              </div>
+              <div style={{
+                backgroundColor: designSystem.colors.surfaceLight,
+                borderRadius: designSystem.borderRadius.md,
+                padding: designSystem.spacing.md,
+                textAlign: "center",
+              }}>
+                <div style={{
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  color: designSystem.colors.secondary,
+                  marginBottom: designSystem.spacing.xs,
+                }}>
+                  {learningProgress.learnedTopics.length}
+                </div>
+                <div style={{
+                  fontSize: designSystem.typography.body.small,
+                  color: designSystem.colors.textSecondary,
+                }}>
+                  已学知识点
+                </div>
+              </div>
+              <div style={{
+                backgroundColor: designSystem.colors.surfaceLight,
+                borderRadius: designSystem.borderRadius.md,
+                padding: designSystem.spacing.md,
+                textAlign: "center",
+              }}>
+                <div style={{
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  color: designSystem.colors.primaryLight,
+                  marginBottom: designSystem.spacing.xs,
+                }}>
+                  🔥 {learningProgress.bestStreak}
+                </div>
+                <div style={{
+                  fontSize: designSystem.typography.body.small,
+                  color: designSystem.colors.textSecondary,
+                }}>
+                  最佳连续答对
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 输入区域 */}
         <div style={{ 
@@ -755,6 +1029,24 @@ export default function Home() {
                     gap: designSystem.spacing.sm,
                   }}>
                     {feedback === "正确！" ? "✅ 回答正确！" : "❌ 回答错误！"}
+                    {consecutiveCorrect >= 2 && feedback === "正确！" && (
+                      <span style={{ 
+                        marginLeft: designSystem.spacing.md,
+                        color: designSystem.colors.primary,
+                        fontSize: designSystem.typography.body.small,
+                      }}>
+                        🎯 难度已提升！
+                      </span>
+                    )}
+                    {consecutiveWrong >= 1 && feedback === "错误！" && (
+                      <span style={{ 
+                        marginLeft: designSystem.spacing.md,
+                        color: designSystem.colors.primary,
+                        fontSize: designSystem.typography.body.small,
+                      }}>
+                        💡 难度已降低
+                      </span>
+                    )}
                   </p>
                 </div>
               )}
@@ -869,40 +1161,139 @@ export default function Home() {
           >
             📝 用户反馈
           </a>
+          <a
+            href="/wrong-questions"
+            style={{
+              display: "inline-block",
+              marginTop: designSystem.spacing.md,
+              marginLeft: designSystem.spacing.lg,
+              color: designSystem.colors.secondary,
+              textDecoration: "none",
+              fontWeight: "500",
+              transition: `color ${designSystem.animations.transition}`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = designSystem.colors.primaryLight;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = designSystem.colors.secondary;
+            }}
+          >
+            📚 错题本
+          </a>
+          <a
+            href="/report"
+            style={{
+              display: "inline-block",
+              marginTop: designSystem.spacing.md,
+              marginLeft: designSystem.spacing.lg,
+              color: designSystem.colors.primary,
+              textDecoration: "none",
+              fontWeight: "500",
+              transition: `color ${designSystem.animations.transition}`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = designSystem.colors.primaryLight;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = designSystem.colors.primary;
+            }}
+          >
+            📊 学习报告
+          </a>
         </footer>
 
-        {/* 浮动反馈按钮 */}
-        <a
-          href="/feedback"
-          style={{
-            position: "fixed",
-            bottom: designSystem.spacing.xl,
-            right: designSystem.spacing.xl,
-            backgroundColor: designSystem.colors.primary,
-            color: designSystem.colors.text,
-            padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
-            borderRadius: designSystem.borderRadius.full,
-            boxShadow: designSystem.shadows.xl,
-            textDecoration: "none",
-            fontWeight: "600",
-            fontSize: designSystem.typography.body.regular,
-            transition: `all ${designSystem.animations.transition}`,
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            gap: designSystem.spacing.sm,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = designSystem.colors.primaryLight;
-            e.currentTarget.style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = designSystem.colors.primary;
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
-        >
-          💬 反馈
-        </a>
+        {/* 浮动按钮 */}
+        <div style={{
+          position: "fixed",
+          bottom: designSystem.spacing.xl,
+          right: designSystem.spacing.xl,
+          display: "flex",
+          gap: designSystem.spacing.md,
+          zIndex: 1000,
+        }}>
+          <a
+            href="/wrong-questions"
+            style={{
+              backgroundColor: designSystem.colors.secondary,
+              color: designSystem.colors.text,
+              padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+              borderRadius: designSystem.borderRadius.full,
+              boxShadow: designSystem.shadows.xl,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: designSystem.typography.body.regular,
+              transition: `all ${designSystem.animations.transition}`,
+              display: "flex",
+              alignItems: "center",
+              gap: designSystem.spacing.sm,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = designSystem.colors.primaryLight;
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = designSystem.colors.secondary;
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            📚 错题本
+          </a>
+          <a
+            href="/report"
+            style={{
+              backgroundColor: designSystem.colors.primary,
+              color: designSystem.colors.text,
+              padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+              borderRadius: designSystem.borderRadius.full,
+              boxShadow: designSystem.shadows.xl,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: designSystem.typography.body.regular,
+              transition: `all ${designSystem.animations.transition}`,
+              display: "flex",
+              alignItems: "center",
+              gap: designSystem.spacing.sm,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = designSystem.colors.primaryLight;
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = designSystem.colors.primary;
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            📊 学习报告
+          </a>
+          <a
+            href="/feedback"
+            style={{
+              backgroundColor: designSystem.colors.surface,
+              color: designSystem.colors.text,
+              padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+              borderRadius: designSystem.borderRadius.full,
+              boxShadow: designSystem.shadows.xl,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: designSystem.typography.body.regular,
+              transition: `all ${designSystem.animations.transition}`,
+              display: "flex",
+              alignItems: "center",
+              gap: designSystem.spacing.sm,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = designSystem.colors.surfaceLight;
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = designSystem.colors.surface;
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            💬 反馈
+          </a>
+        </div>
       </div>
     </div>
   );
