@@ -60,6 +60,14 @@ const designSystem = {
 
 // 生成随机粒子背景
 const ParticleBackground = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
+
+  const particleCount = isMobile ? 15 : 50;
+
   return (
     <div style={{ 
       position: "fixed", 
@@ -68,9 +76,10 @@ const ParticleBackground = () => {
       width: "100%", 
       height: "100%", 
       zIndex: -1,
-      overflow: "hidden"
+      overflow: "hidden",
+      pointerEvents: "none"
     }}>
-      {Array.from({ length: 50 }).map((_, index) => (
+      {Array.from({ length: particleCount }).map((_, index) => (
         <div
           key={index}
           style={{
@@ -484,7 +493,6 @@ export default function Home() {
         background: designSystem.colors.background,
         color: designSystem.colors.text,
         position: "relative",
-        overflow: "hidden",
       }}
     >
       {/* 粒子背景 */}
@@ -769,7 +777,7 @@ export default function Home() {
           <div style={{ 
             position: "relative",
             flex: "1",
-            minWidth: "300px",
+            minWidth: "280px",
             maxWidth: "600px",
           }}>
             <input
@@ -1206,10 +1214,11 @@ export default function Home() {
         {/* 浮动按钮 */}
         <div style={{
           position: "fixed",
-          bottom: designSystem.spacing.xl,
-          right: designSystem.spacing.xl,
+          bottom: designSystem.spacing.lg,
+          right: designSystem.spacing.md,
           display: "flex",
-          gap: designSystem.spacing.md,
+          flexDirection: "column",
+          gap: designSystem.spacing.sm,
           zIndex: 1000,
         }}>
           <a
@@ -1217,16 +1226,18 @@ export default function Home() {
             style={{
               backgroundColor: designSystem.colors.secondary,
               color: designSystem.colors.text,
-              padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+              padding: designSystem.spacing.md,
               borderRadius: designSystem.borderRadius.full,
               boxShadow: designSystem.shadows.xl,
               textDecoration: "none",
               fontWeight: 600,
-              fontSize: designSystem.typography.body.regular,
+              fontSize: "1.2rem",
               transition: `all ${designSystem.animations.transition}`,
               display: "flex",
               alignItems: "center",
-              gap: designSystem.spacing.sm,
+              justifyContent: "center",
+              width: "48px",
+              height: "48px",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = designSystem.colors.primaryLight;
@@ -1237,23 +1248,25 @@ export default function Home() {
               e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            📚 错题本
+            📚
           </a>
           <a
             href="/report"
             style={{
               backgroundColor: designSystem.colors.primary,
               color: designSystem.colors.text,
-              padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+              padding: designSystem.spacing.md,
               borderRadius: designSystem.borderRadius.full,
               boxShadow: designSystem.shadows.xl,
               textDecoration: "none",
               fontWeight: 600,
-              fontSize: designSystem.typography.body.regular,
+              fontSize: "1.2rem",
               transition: `all ${designSystem.animations.transition}`,
               display: "flex",
               alignItems: "center",
-              gap: designSystem.spacing.sm,
+              justifyContent: "center",
+              width: "48px",
+              height: "48px",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = designSystem.colors.primaryLight;
@@ -1264,23 +1277,25 @@ export default function Home() {
               e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            📊 学习报告
+            📊
           </a>
           <a
             href="/feedback"
             style={{
               backgroundColor: designSystem.colors.surface,
               color: designSystem.colors.text,
-              padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+              padding: designSystem.spacing.md,
               borderRadius: designSystem.borderRadius.full,
               boxShadow: designSystem.shadows.xl,
               textDecoration: "none",
               fontWeight: 600,
-              fontSize: designSystem.typography.body.regular,
+              fontSize: "1.2rem",
               transition: `all ${designSystem.animations.transition}`,
               display: "flex",
               alignItems: "center",
-              gap: designSystem.spacing.sm,
+              justifyContent: "center",
+              width: "48px",
+              height: "48px",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = designSystem.colors.surfaceLight;
@@ -1291,7 +1306,7 @@ export default function Home() {
               e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            💬 反馈
+            💬
           </a>
         </div>
       </div>
