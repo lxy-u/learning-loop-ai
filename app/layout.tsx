@@ -8,6 +8,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <meta charSet="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Learning Loop AI</title>
         {/* Plausible 数据统计 */}
         <Script
